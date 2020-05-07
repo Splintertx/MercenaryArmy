@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using ModLib;
-using ModLib.Attributes;
 using System.Xml.Serialization;
+
+using ModLib.Definitions;
+using ModLib.Definitions.Attributes;
 
 namespace MercenaryArmy
 {
@@ -21,17 +21,7 @@ namespace MercenaryArmy
         {
             get
             {
-                if (_instance == null)
-                {
-                    _instance = FileDatabase.Get<Settings>(SettingsInstanceID);
-                    if (_instance == null)
-                    {
-                        _instance = new Settings();
-                        SettingsDatabase.SaveSettings(_instance);
-                    }
-                }
-
-                return _instance;
+                return (Settings)SettingsDatabase.GetSettings<Settings>();
             }
         }
 

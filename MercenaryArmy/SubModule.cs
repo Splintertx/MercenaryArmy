@@ -1,10 +1,9 @@
-﻿using HarmonyLib;
-using System;
+﻿using System;
 using System.Windows.Forms;
+
 using TaleWorlds.MountAndBlade;
 
-using ModLib;
-using ModLib.Debugging;
+using HarmonyLib;
 
 namespace MercenaryArmy
 {
@@ -17,15 +16,12 @@ namespace MercenaryArmy
             base.OnSubModuleLoad();
             try
             {
-                FileDatabase.Initialise(ModuleFolderName);
-                SettingsDatabase.RegisterSettings(Settings.Instance);
-
                 var harmony = new Harmony("mod.bannerlord.splintert");
                 harmony.PatchAll();
             }
             catch (Exception ex)
             {
-                ModDebug.ShowError($"Error Initializing MercenaryArmy:\n\n{ex.ToStringFull()}");
+                MessageBox.Show($"Error Initializing MercenaryArmy:\n\n{ex.Message}");
             }
         }
     }
