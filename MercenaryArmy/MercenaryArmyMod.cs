@@ -13,6 +13,7 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection;
 using TaleWorlds.CampaignSystem.ViewModelCollection.ArmyManagement;
 using TaleWorlds.CampaignSystem.Actions;
+using TaleWorlds.ObjectSystem;
 
 namespace MercenaryArmy
 {
@@ -84,9 +85,16 @@ namespace MercenaryArmy
                 {
                     if (MobileParty.MainParty.Army == null)
                     {
+                        string err = "";
+                        if (!CampaignCheats.CheckCheatUsage(ref err))
+                        {
+                            InformationMessage im = new InformationMessage(err);
+                            InformationManager.DisplayMessage(im);
+                            return false;
+                        }
                         if ((MobileParty.MainParty.MapFaction as Kingdom) is null)
                             CampaignCheats.CreatePlayerKingdom(new List<string>());
-                        
+
                         ((Kingdom)MobileParty.MainParty.MapFaction).CreateArmy(Hero.MainHero, (IMapPoint)Hero.MainHero.HomeSettlement, Army.ArmyTypes.Patrolling);
                     }
                     foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)__instance.PartiesInCart)
