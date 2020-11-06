@@ -2,8 +2,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using HarmonyLib;
 using TaleWorlds.Core;
@@ -13,7 +11,6 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection;
 using TaleWorlds.CampaignSystem.ViewModelCollection.ArmyManagement;
 using TaleWorlds.CampaignSystem.Actions;
-using TaleWorlds.ObjectSystem;
 
 namespace MercenaryArmy
 {
@@ -27,8 +24,9 @@ namespace MercenaryArmy
             if (!errs.Any())
             {
                 // Only enable the army button for independents if the hack is enabled
-                if (Settings.Instance.CreatePlayerKingdom)
-                    errs.Add(GameTexts.FindText("str_need_to_be_a_part_of_kingdom", (string)null).ToString());
+                //No need for cheat anymore
+                //if (Settings.Instance.CreatePlayerKingdom)
+                errs.Add(GameTexts.FindText("str_need_to_be_a_part_of_kingdom", (string)null).ToString());
                 errs.Add(GameTexts.FindText("str_mercenary_cannot_manage_army", (string)null).ToString());
             }
 
@@ -66,7 +64,7 @@ namespace MercenaryArmy
         {
             // Only enable this hack if it is enabled and player is independent
             // THIS IS A PORT OF ArmyManagementVM.ExecuteDone!
-            if (!Hero.MainHero.MapFaction.IsKingdomFaction && Settings.Instance.CreatePlayerKingdom)
+            if (!Hero.MainHero.MapFaction.IsKingdomFaction)
             {
                 int num = __instance.PartiesInCart.Sum<ArmyManagementItemVM>((Func<ArmyManagementItemVM, int>)(P => P.Cost));
                 bool flag1 = (double)num <= (double)Hero.MainHero.Clan.Influence;
@@ -85,17 +83,23 @@ namespace MercenaryArmy
                 {
                     if (MobileParty.MainParty.Army == null)
                     {
-                        string err = "";
-                        if (!CampaignCheats.CheckCheatUsage(ref err))
+                        Army army = new Army((Kingdom)null, Hero.MainHero.PartyBelongedTo, Army.ArmyTypes.Patrolling, Hero.MainHero.HomeSettlement, (Hero)null)
                         {
-                            InformationMessage im = new InformationMessage(err);
-                            InformationManager.DisplayMessage(im);
-                            return false;
+                            AIBehavior = Army.AIBehaviorFlags.Gathering
+                        };
+                        army.Gather();
+                        Traverse traverse = Traverse.Create((object)CampaignEventDispatcher.Instance).Method("OnArmyCreated", new Type[1]
+                        {
+                                    typeof (Army)
+                        }, (object[])null);
+                        if (traverse.MethodExists())
+                        {
+                            traverse.GetValue((object)army);
                         }
-                        if ((MobileParty.MainParty.MapFaction as Kingdom) is null)
-                            CampaignCheats.CreatePlayerKingdom(new List<string>());
-
-                        ((Kingdom)MobileParty.MainParty.MapFaction).CreateArmy(Hero.MainHero, (IMapPoint)Hero.MainHero.HomeSettlement, Army.ArmyTypes.Patrolling);
+                        if (army.LeaderParty.LeaderHero == Hero.MainHero && (Game.Current.GameStateManager.GameStates.Single<GameState>((Func<GameState, bool>)(S => S is MapState)) is MapState mapState))
+                        {
+                            mapState.OnArmyCreated(MobileParty.MainParty);
+                        }
                     }
                     foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)__instance.PartiesInCart)
                     {
