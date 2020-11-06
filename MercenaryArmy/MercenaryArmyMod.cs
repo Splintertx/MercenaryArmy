@@ -11,6 +11,8 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection;
 using TaleWorlds.CampaignSystem.ViewModelCollection.ArmyManagement;
 using TaleWorlds.CampaignSystem.Actions;
+using TaleWorlds.CampaignSystem.Siege;
+using TaleWorlds.CampaignSystem.GameMenus;
 
 namespace MercenaryArmy
 {
@@ -23,7 +25,7 @@ namespace MercenaryArmy
         {
             if (!errs.Any())
             {
-                // Only enable the army button for independents if the hack is enabled
+
                 //No need for cheat anymore
                 //if (Settings.Instance.CreatePlayerKingdom)
                 errs.Add(GameTexts.FindText("str_need_to_be_a_part_of_kingdom", (string)null).ToString());
@@ -57,12 +59,95 @@ namespace MercenaryArmy
         }
     }
 
+
+    /// <summary>
+    /// Initialise hourly tick for armies not in kingdom from player
+    /// </summary>
+    [HarmonyPatch(typeof(Campaign), "InitializeCampaignObjectsOnAfterLoad")]
+    public class CampaignMod
+    {
+        static void Postfix(Campaign __instance)
+        {
+            if (__instance.MainParty.Army != null)
+            {
+                Traverse traverse = Traverse.Create((object)__instance.MainParty.Army).Method("OnAfterLoad", (object[])null);
+                if (traverse.MethodExists())
+                {
+                    traverse.GetValue();
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(MobileParty), "ConsiderMapEventsAndSiegesInternal")]
+    public class MobilePartyMod
+    {
+        static bool Prefix(MobileParty __instance, IFaction factionToConsiderAgainst)
+        {
+            //we exit and go back to normal if army is not player's army
+            if (__instance.Army == null || __instance.Army.LeaderParty == null || !__instance.Army.LeaderParty.IsMainParty)
+                return true;
+            if (__instance.Army != null && __instance.Army.Kingdom != null && __instance.Army.Kingdom != __instance.MapFaction)
+                __instance.Army = (Army)null;
+            if (__instance.CurrentSettlement != null)
+            {
+                IFaction mapFaction = __instance.CurrentSettlement.MapFaction;
+                if (mapFaction != null && mapFaction.IsAtWarWith(__instance.MapFaction) && __instance.IsRaiding || __instance.IsMainParty && (PlayerEncounter.Current.ForceRaid || PlayerEncounter.Current.ForceSupplies || PlayerEncounter.Current.ForceVolunteers))
+                    return false;
+            }
+            if (__instance.Party.MapEventSide != null)
+            {
+                IFaction mapFaction1 = __instance.Party.MapEventSide.OtherSide.MapFaction;
+                IFaction mapFaction2 = __instance.Party.MapEventSide.MapFaction;
+                BattleSideEnum side = PlayerEncounter.Battle != null ? PlayerEncounter.Battle.PlayerSide : BattleSideEnum.None;
+                if (mapFaction1 == null || !mapFaction1.IsAtWarWith(__instance.MapFaction) && mapFaction1 == factionToConsiderAgainst)
+                {
+                    if (__instance.Party == PartyBase.MainParty && PlayerEncounter.Current != null && __instance.Party.SiegeEvent != null)
+                        PlayerEncounter.Current.SetPlayerSiegeInterruptedByPeace();
+                    __instance.Party.MapEventSide = (MapEventSide)null;
+                }
+                else if (mapFaction2 == null || mapFaction2.IsAtWarWith(__instance.MapFaction) && mapFaction1 == factionToConsiderAgainst)
+                    __instance.Party.MapEventSide = (MapEventSide)null;
+                if (__instance.Party == PartyBase.MainParty && PlayerEncounter.Current != null && (PlayerEncounter.Battle != null && PlayerEncounter.Battle.PartiesOnSide(GetOtherSide(side)).Any<PartyBase>((Func<PartyBase, bool>)(x => x.MapFaction == factionToConsiderAgainst))) && !PlayerEncounter.EncounteredParty.MapFaction.IsAtWarWith(MobileParty.MainParty.MapFaction))
+                    PlayerEncounter.Finish(true);
+            }
+            if (__instance.BesiegerCamp != null)
+            {
+                IFaction mapFaction1 = __instance.BesiegerCamp.SiegeEvent.BesiegedSettlement.MapFaction;
+                IFaction mapFaction2 = __instance.BesiegerCamp.BesiegerParty?.MapFaction;
+                if (mapFaction1 == null || !mapFaction1.IsAtWarWith(__instance.MapFaction) && mapFaction1 == factionToConsiderAgainst)
+                    __instance.BesiegerCamp = (BesiegerCamp)null;
+                else if (mapFaction2 == null || mapFaction2.IsAtWarWith(__instance.MapFaction) && mapFaction1 == factionToConsiderAgainst)
+                    __instance.BesiegerCamp = (BesiegerCamp)null;
+            }
+            if (__instance.CurrentSettlement == null)
+                return false;
+            IFaction mapFaction3 = __instance.CurrentSettlement.MapFaction;
+            if (mapFaction3 == null || mapFaction3 != factionToConsiderAgainst || !mapFaction3.IsAtWarWith(__instance.MapFaction))
+                return false;
+            if (__instance.IsMainParty && !__instance.IsRaiding)
+            {
+                if (GameStateManager.Current.ActiveState.IsMission || !__instance.CurrentSettlement.IsFortification)
+                    return false;
+                GameMenu.SwitchToMenu("fortification_crime_rating");
+            }
+            else
+                LeaveSettlementAction.ApplyForParty(__instance);
+            return false;
+        }
+
+        private static BattleSideEnum GetOtherSide(BattleSideEnum side)
+        {
+            return side != BattleSideEnum.Attacker ? BattleSideEnum.Attacker : BattleSideEnum.Defender;
+        }
+    }
+
     [HarmonyPatch(typeof(ArmyManagementVM), "ExecuteDone")]
     public class ExecuteDoneMod
     {
         static bool Prefix(ArmyManagementVM __instance, MBBindingList<ArmyManagementItemVM> ____partiesToRemove, Action ____onClose)
         {
-            // Only enable this hack if it is enabled and player is independent
+            // Only enable if player is independent
             // THIS IS A PORT OF ArmyManagementVM.ExecuteDone!
             if (!Hero.MainHero.MapFaction.IsKingdomFaction)
             {
