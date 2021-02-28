@@ -69,17 +69,11 @@ namespace MercenaryArmy
             if (!Hero.MainHero.MapFaction.IsKingdomFaction && Settings.Instance.CreatePlayerKingdom)
             {
                 int num = __instance.PartiesInCart.Sum<ArmyManagementItemVM>((Func<ArmyManagementItemVM, int>)(P => P.Cost));
-                bool flag1 = (double)num <= (double)Hero.MainHero.Clan.Influence;
+                bool flag1 = num <= 0 || (double)num <= (double)Hero.MainHero.Clan.Influence;
                 if (flag1 && __instance.NewCohesion > __instance.Cohesion)
                 {
-                    if (MobileParty.MainParty.Army == null)
-                        return false;
-                    ArmyManagementCalculationModel calculationModel = Campaign.Current.Models.ArmyManagementCalculationModel;
-                    int num1 = __instance.NewCohesion - __instance.Cohesion;
-                    Army army = MobileParty.MainParty.Army;
-                    double num2 = (double)num1;
-                    int totalInfluenceCost = calculationModel.CalculateTotalInfluenceCost(army, (float)num2);
-                    MobileParty.MainParty.Army.BoostCohesionWithInfluence((float)num1, totalInfluenceCost);
+                    var foo = __instance.GetType().GetMethod("ApplyCohesionChange", System.Reflection.BindingFlags.NonPublic);
+                    foo.Invoke(__instance, null);
                 }
                 if (__instance.PartiesInCart.Count > 1 & flag1/* && MobileParty.MainParty.MapFaction.IsKingdomFaction*/)
                 {
@@ -94,7 +88,6 @@ namespace MercenaryArmy
                         }
                         if ((MobileParty.MainParty.MapFaction as Kingdom) is null)
                             CampaignCheats.CreatePlayerKingdom(new List<string>());
-
                         ((Kingdom)MobileParty.MainParty.MapFaction).CreateArmy(Hero.MainHero, (IMapPoint)Hero.MainHero.HomeSettlement, Army.ArmyTypes.Patrolling);
                     }
                     foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)__instance.PartiesInCart)
@@ -131,9 +124,79 @@ namespace MercenaryArmy
                     ____partiesToRemove.Clear();
                 }
                 if (flag1)
+                {
                     ____onClose();
+                    CampaignEventDispatcher.Instance.OnArmyOverlaySetDirty();
+                }
                 else
-                    InformationManager.AddQuickInformation(new TextObject("{=Xmw93W6a}Not Enough Influence", (Dictionary<string, TextObject>)null), 0, (BasicCharacterObject)null, "");
+                    InformationManager.AddQuickInformation(new TextObject("{=Xmw93W6a}Not Enough Influence"));
+
+                //int num = __instance.PartiesInCart.Sum<ArmyManagementItemVM>((Func<ArmyManagementItemVM, int>)(P => P.Cost));
+                //bool flag1 = (double)num <= (double)Hero.MainHero.Clan.Influence;
+                //if (flag1 && __instance.NewCohesion > __instance.Cohesion)
+                //{
+                //    if (MobileParty.MainParty.Army == null)
+                //        return false;
+                //    ArmyManagementCalculationModel calculationModel = Campaign.Current.Models.ArmyManagementCalculationModel;
+                //    int num1 = __instance.NewCohesion - __instance.Cohesion;
+                //    Army army = MobileParty.MainParty.Army;
+                //    double num2 = (double)num1;
+                //    int totalInfluenceCost = calculationModel.CalculateTotalInfluenceCost(army, (float)num2);
+                //    MobileParty.MainParty.Army.BoostCohesionWithInfluence((float)num1, totalInfluenceCost);
+                //}
+                //if (__instance.PartiesInCart.Count > 1 & flag1/* && MobileParty.MainParty.MapFaction.IsKingdomFaction*/)
+                //{
+                //    if (MobileParty.MainParty.Army == null)
+                //    {
+                //        string err = "";
+                //        if (!CampaignCheats.CheckCheatUsage(ref err))
+                //        {
+                //            InformationMessage im = new InformationMessage(err);
+                //            InformationManager.DisplayMessage(im);
+                //            return false;
+                //        }
+                //        if ((MobileParty.MainParty.MapFaction as Kingdom) is null)
+                //            CampaignCheats.CreatePlayerKingdom(new List<string>());
+
+                //        ((Kingdom)MobileParty.MainParty.MapFaction).CreateArmy(Hero.MainHero, (IMapPoint)Hero.MainHero.HomeSettlement, Army.ArmyTypes.Patrolling);
+                //    }
+                //    foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)__instance.PartiesInCart)
+                //    {
+                //        if (managementItemVm.Party != MobileParty.MainParty)
+                //        {
+                //            managementItemVm.Party.Army = MobileParty.MainParty.Army;
+                //            SetPartyAiAction.GetActionForEscortingParty(managementItemVm.Party, MobileParty.MainParty);
+                //            managementItemVm.Party.IsJoiningArmy = true;
+                //        }
+                //    }
+                //    Hero.MainHero.Clan.Influence -= (float)num;
+                //}
+                //if (____partiesToRemove.Count > 0)
+                //{
+                //    bool flag2 = false;
+                //    foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)____partiesToRemove)
+                //    {
+                //        if (managementItemVm.Party == MobileParty.MainParty)
+                //        {
+                //            managementItemVm.Party.Army = (Army)null;
+                //            flag2 = true;
+                //        }
+                //    }
+                //    if (!flag2)
+                //    {
+                //        foreach (ArmyManagementItemVM managementItemVm in (Collection<ArmyManagementItemVM>)____partiesToRemove)
+                //        {
+                //            Army army = MobileParty.MainParty.Army;
+                //            if ((army != null ? (army.Parties.Contains(managementItemVm.Party) ? 1 : 0) : 0) != 0)
+                //                managementItemVm.Party.Army = (Army)null;
+                //        }
+                //    }
+                //    ____partiesToRemove.Clear();
+                //}
+                //if (flag1)
+                //    ____onClose();
+                //else
+                //    InformationManager.AddQuickInformation(new TextObject("{=Xmw93W6a}Not Enough Influence", (Dictionary<string, TextObject>)null), 0, (BasicCharacterObject)null, "");
 
                 return false;
             }
